@@ -14,7 +14,7 @@ public class QueueStack <T>{
 
     public T remove(){
         if (isEmpty()){
-            throw new UnsupportedOperationException();
+            throw new EmptyStackException();
         }
         else if (!st2.isEmpty()){
             return st2.pop();
