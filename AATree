@@ -1,0 +1,312 @@
+public class Node {
+    public int value;
+    public int level;
+    public Node left;
+    public Node right;
+
+    public Node(int value) {
+        this.value = value;
+        this.level = 1;
+        this.left = null;
+        this.right = null;
+    }
+}
+public class AATree {
+    public static int operationCount = 0;
+    private Node root;
+
+    public AATree() {
+        root = null;
+    }
+
+    public void insert(int value) {
+        root = insert(root, value);
+    }
+
+    private Node insert(Node node, int value) {
+        operationCount++;
+        if (node == null) {
+            return new Node(value);
+        }
+
+        operationCount++;
+        if (value < node.value) {
+            node.left = insert(node.left, value);
+        } else if (value > node.value) {
+            operationCount++;
+            node.right = insert(node.right, value);
+        }
+
+        node = skew(node);
+        node = split(node);
+
+        return node;
+    }
+
+    public void delete(int value) {
+        root = delete(root, value);
+    }
+
+    private Node delete(Node node, int value) {
+        operationCount++;
+        if (node == null) {
+            return null;
+        }
+
+        operationCount++;
+        if (value < node.value) {
+            node.left = delete(node.left, value);
+        } else if (value > node.value) {
+            operationCount++;
+            node.right = delete(node.right, value);
+        } else {
+            if (node.left == null && node.right == null) {
+                return null;
+            }
+            if (node.left == null) {
+                return node.right;
+            }
+            if (node.right == null) {
+                return node.left;
+            }
+
+            Node successor = findMin(node.right);
+            node.value = successor.value;
+            node.right = delete(node.right, successor.value);
+        }
+
+        node = decreaseLevel(node);
+        node = skew(node);
+        node.right = skew(node.right);
+        if (node.right != null) {
+            node.right.right = skew(node.right.right);
+        }
+        node = split(node);
+        node.right = split(node.right);
+
+        return node;
+    }
+
+    public boolean contains(int value) {
+        return contains(root, value);
+    }
+
+    private boolean contains(Node node, int value) {
+        operationCount++;
+        if (node == null) {
+            return false;
+        }
+        operationCount++;
+        if (value < node.value) {
+            return contains(node.left, value);
+        }
+        operationCount++;
+        if (value > node.value) {
+            return contains(node.right, value);
+        }
+        return true;
+    }
+
+    private Node skew(Node node) {
+        operationCount++;
+        if (node == null) {
+            return null;
+        }
+        operationCount++;
+        if (node.left == null) {
+            return node;
+        }
+        operationCount++;
+        if (node.left.level == node.level) {
+            Node leftChild = node.left;
+            node.left = leftChild.right;
+            leftChild.right = node;
+            return leftChild;
+        }
+        return node;
+    }
+
+    private Node split(Node node) {
+        operationCount++;
+        if (node == null) {
+            return null;
+        }
+        operationCount++;
+        if (node.right == null) {
+            return node;
+        }
+        operationCount++;
+        if (node.right.right == null) {
+            return node;
+        }
+        operationCount++;
+        if (node.level == node.right.right.level) {
+            Node rightChild = node.right;
+            node.right = rightChild.left;
+            rightChild.left = node;
+            rightChild.level++;
+            return rightChild;
+        }
+        return node;
+    }
+
+    private Node decreaseLevel(Node node) {
+        operationCount++;
+        if (node == null) {
+            return null;
+        }
+
+        int leftLevel = 0;
+        if (node.left != null) {
+            leftLevel = node.left.level;
+        }
+
+        int rightLevel = 0;
+        if (node.right != null) {
+            rightLevel = node.right.level;
+        }
+
+        int correctLevel = Math.min(leftLevel, rightLevel) + 1;
+
+        if (correctLevel < node.level) {
+            node.level = correctLevel;
+            if (correctLevel < rightLevel) {
+                node.right.level = correctLevel;
+            }
+        }
+        return node;
+    }
+
+    private Node findMin(Node node) {
+        while (node.left != null) {
+            operationCount++;
+            node = node.left;
+        }
+        return node;
+    }
+}
+import java.util.*;
+import java.io.*;
+public class TreeArr {
+    public static void main(String[] args) {
+    
+        AATree tree = new AATree();
+
+        int[] testData = generateRandomArray(10000, 0, 100000);
+
+        List<String> insertResults = testInsertOperations(tree, testData);
+        saveToCSV("insert_results.csv", insertResults);
+
+        List<String> searchResults = testSearchOperations(tree, testData, 100);
+        saveToCSV("search_results.csv", searchResults);
+
+        List<String> deleteResults = testDeleteOperations(tree, testData, 1000);
+        saveToCSV("delete_results.csv", deleteResults);
+        
+    }
+
+    private static int[] generateRandomArray(int size, int min, int max) {
+        Random rand = new Random();
+        int[] array = new int[size];
+        for (int i = 0; i < size; i++) {
+            array[i] = rand.nextInt(max - min) + min;
+        }
+        return array;
+    }
+
+    private static List<String> testInsertOperations(AATree tree, int[] data) {
+        List<String> results = new ArrayList<>();
+        results.add("Index,Time(ns),Operations");
+
+        for (int i = 0; i < data.length; i++) {
+            AATree.operationCount = 0;
+            long startTime = System.nanoTime();
+            tree.insert(data[i]);
+            long duration = System.nanoTime() - startTime;
+            results.add(String.format("%d,%d,%d", i+1, duration, AATree.operationCount));
+        }
+
+        return results;
+    }
+
+    private static List<String> testSearchOperations(AATree tree, int[] data, int count) {
+        List<String> results = new ArrayList<>();
+        results.add("Index,Time(ns),Operations");
+        Random rand = new Random();
+
+        for (int i = 0; i < count; i++) {
+            int index = rand.nextInt(data.length);
+            AATree.operationCount = 0;
+            long startTime = System.nanoTime();
+            tree.contains(data[index]);
+            long duration = System.nanoTime() - startTime;
+            results.add(String.format("%d,%d,%d", i+1, duration, AATree.operationCount));
+        }
+
+        return results;
+    }
+
+    private static List<String> testDeleteOperations(AATree tree, int[] data, int count) {
+        List<String> results = new ArrayList<>();
+        results.add("Index,Time(ns),Operations");
+        List<Integer> indices = new ArrayList<>();
+
+        for (int i = 0; i < data.length; i++) {
+            indices.add(i);
+        }
+        Collections.shuffle(indices);
+
+        for (int i = 0; i < count; i++) {
+            int index = indices.get(i);
+            AATree.operationCount = 0;
+            long startTime = System.nanoTime();
+            tree.delete(data[index]);
+            long duration = System.nanoTime() - startTime;
+            results.add(String.format("%d,%d,%d", i+1, duration, AATree.operationCount));
+        }
+
+        return results;
+    }
+
+    private static void saveToCSV(String filename, List<String> lines) {
+        try (FileWriter writer = new FileWriter(filename)) {
+            for (String line : lines) {
+                writer.write(line + "\n");
+            }
+
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+        }
+    }
+
+
+    private static void calculateStats(List<String> results) {
+        if (results.size() <= 1) return;
+
+        long totalTime = 0;
+        long totalOps = 0;
+        long maxTime = Long.MIN_VALUE;
+        long minTime = Long.MAX_VALUE;
+
+        for (int i = 1; i < results.size(); i++) {
+            String[] parts = results.get(i).split(",");
+            long time = Long.parseLong(parts[1]);
+            long ops = Long.parseLong(parts[2]);
+
+            totalTime += time;
+            totalOps += ops;
+            maxTime = Math.max(maxTime, time);
+            minTime = Math.min(minTime, time);
+        }
+
+        double avgTime = (double)totalTime / (results.size()-1);
+        double avgOps = (double)totalOps / (results.size()-1);
+
+        System.out.printf("Среднее время: %.2f нс\n", avgTime);
+        System.out.printf("Среднее операций: %.2f\n", avgOps);
+        System.out.printf("Макс время: %d нс\n", maxTime);
+        System.out.printf("Мин время: %d нс\n", minTime);
+    }
+
+}
+
